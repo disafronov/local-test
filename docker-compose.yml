@@ -47,6 +47,8 @@ services:
     volumes:
       - ssl:/srv/ssl
       - ca:/srv/ca
+    environment:
+      - SERVER_SAN_EXTRA
     configs:
       - source: ssl_params
         target: /opt/ssl_params.sh
@@ -57,6 +59,8 @@ services:
       - |
         set -e
         . /opt/ssl_params.sh
+        SERVER_SAN="DNS:$${SERVER_COMMON_NAME},DNS:*.test"
+        [ -n "$$SERVER_SAN_EXTRA" ] && SERVER_SAN="$$SERVER_SAN,$$SERVER_SAN_EXTRA"
         openssl version -a
 
         # Generate CA if missing or empty, or if CA key is missing
@@ -172,4 +176,3 @@ configs:
 
       # Server
       SERVER_COMMON_NAME="test"
-      SERVER_SAN="DNS:$${SERVER_COMMON_NAME},DNS:*.test"
