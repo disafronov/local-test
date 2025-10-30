@@ -1,1 +1,3 @@
-# semantic-basic-template
+# Nginx Proxy Manager
+
+Configured for [*.test] domain.
