@@ -1,0 +1,162 @@
+services:
+  app:
+    image: "jc21/nginx-proxy-manager:latest"
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      # Admin Web Port:
+      - "127.1.0.1:81:81"
+    volumes:
+      - data:/data
+      - letsencrypt:/etc/letsencrypt
+      - ssl:/srv/ssl:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    configs:
+      - source: http
+        target: /data/nginx/custom/http.conf
+      - source: server_proxy
+        target: /data/nginx/custom/server_proxy.conf
+    depends_on:
+      - db
+      - ssl
+    environment:
+      # Postgres parameters:
+      DB_POSTGRES_HOST: 'db'
+      DB_POSTGRES_NAME: 'npm'
+      DB_POSTGRES_PASSWORD: "${DB_PASSWORD:-kMm0rB8GMzhF9gD$!}"
+      DB_POSTGRES_PORT: '5432'
+      DB_POSTGRES_USER: 'npm'
+      # Uncomment this if IPv6 is not enabled on your host
+      # DISABLE_IPV6: 'true'
+
+  db:
+    image: postgres:latest
+    restart: always
+    environment:
+      POSTGRES_DB: 'npm'
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-kMm0rB8GMzhF9gD$!}"
+      POSTGRES_USER: 'npm'
+    volumes:
+      - postgres:/var/lib/postgresql
+
+  ssl:
+    image: alpine/openssl:latest
+    restart: "no"
+    volumes:
+      - ssl:/srv/ssl
+    configs:
+      - source: ssl_params
+        target: /opt/ssl_params.sh
+    command: >
+      sh -c '
+      set -e
+      cd /srv/ssl
+      . /opt/ssl_params.sh
+
+      # Generate CA if missing
+      if [ ! -f ca.pem ]; then
+        openssl req -x509 -newkey rsa:4096 -days $DEFAULT_VALID_DAYS -nodes -utf8 \
+          -subj "/C=$DEFAULT_COUNTRY/ST=$DEFAULT_STATE/L=$DEFAULT_LOCALITY/O=$DEFAULT_ORGANIZATION/OU=$DEFAULT_ORGANIZATIONAL_UNIT/CN=$CA_COMMON_NAME" \
+          -keyout /tmp/ca.key -out ca.pem
+      fi
+
+      # Generate server cert with SAN
+      if [ ! -f server_key.pem ]; then
+        openssl req -newkey rsa:2048 -nodes -utf8 \
+          -subj "/C=$DEFAULT_COUNTRY/ST=$DEFAULT_STATE/L=$DEFAULT_LOCALITY/O=$DEFAULT_ORGANIZATION/OU=$DEFAULT_ORGANIZATIONAL_UNIT/CN=$SERVER_COMMON_NAME" \
+          -keyout server_key.pem -out /tmp/server.csr
+
+        openssl x509 -req -in /tmp/server.csr -CA ca.pem -CAkey /tmp/ca.key -CAcreateserial \
+          -out server_certificate.pem -days $DEFAULT_VALID_DAYS \
+          -extfile <(printf "subjectAltName=$SERVER_SAN")
+      fi
+
+      rm -f /tmp/ca.key /tmp/server.csr
+      '
+
+volumes:
+  postgres:
+  data:
+  letsencrypt:
+  ssl:
+
+configs:
+  http:
+    content: |
+      server {
+        set $$forward_scheme http;
+        set $$server         "127.0.0.1";
+        set $$port           81;
+
+        listen 80;
+        listen [::]:80;
+
+        server_name test;
+
+        proxy_set_header Upgrade $$http_upgrade;
+        proxy_set_header Connection $$http_connection;
+        proxy_http_version 1.1;
+
+        access_log /data/logs/npm_access.log proxy;
+        error_log /data/logs/npm_error.log warn;
+
+        location / {
+          proxy_set_header Upgrade $$http_upgrade;
+          proxy_set_header Connection $$http_connection;
+          proxy_http_version 1.1;
+
+          # Proxy!
+          include conf.d/include/proxy.conf;
+        }
+
+        # Custom
+        include /data/nginx/custom/server_proxy[.]conf;
+      }
+
+      server {
+        listen 80;
+        listen [::]:80;
+
+        server_name ca.test;
+
+        location / {
+          root /srv/ssl;
+          try_files /ca.pem =404;
+          default_type application/x-x509-ca-cert;
+          add_header Content-Disposition 'attachment; filename="ca.pem"';
+        }
+
+        access_log /data/logs/ca_access.log;
+        error_log /data/logs/ca_error.log warn;
+      }
+
+  server_proxy:
+    content: |
+      listen 443 ssl;
+      listen [::]:443 ssl;
+
+      # Custom SSL
+      ssl_certificate /srv/ssl/server_certificate.pem;
+      ssl_certificate_key /srv/ssl/server_key.pem;
+
+      # Force SSL
+      include conf.d/include/force-ssl.conf;
+
+  ssl_params:
+    content: |
+      # Default parameters
+      DEFAULT_VALID_DAYS=3650
+      DEFAULT_COUNTRY="XX"
+      DEFAULT_STATE="Nowhere"
+      DEFAULT_LOCALITY="Unknown"
+      DEFAULT_ORGANIZATION="LocalDev"
+      DEFAULT_ORGANIZATIONAL_UNIT="Dev"
+
+      # CA
+      CA_COMMON_NAME="ca.test"
+
+      # Server
+      SERVER_COMMON_NAME="test"
+      SERVER_SAN="DNS:${SERVER_COMMON_NAME},DNS:*.test"
