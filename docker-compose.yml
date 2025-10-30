@@ -11,6 +11,7 @@ services:
       - data:/data
       - letsencrypt:/etc/letsencrypt
       - ssl:/srv/ssl:ro
+      - ca:/srv/ca:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     configs:
@@ -81,30 +82,28 @@ services:
         openssl version -a
 
         # Generate CA if missing or empty, or if CA key is missing
-        if [ ! -s /srv/ssl/ca.pem ] || [ ! -s /srv/ca/ca.key ]; then
-          rm -f /srv/ssl/ca.pem /srv/ca/ca.srl
+        if [ ! -s /srv/ca/ca.pem ] || [ ! -s /srv/ca/ca.key ]; then
+          rm -f /srv/ca/ca.pem /srv/ca/ca.srl
           openssl req -verbose -x509 -newkey rsa:4096 -days $$DEFAULT_VALID_DAYS -nodes -utf8 \
             -subj "/C=$$DEFAULT_COUNTRY/ST=$$DEFAULT_STATE/L=$$DEFAULT_LOCALITY/O=$$DEFAULT_ORGANIZATION/OU=$$DEFAULT_ORGANIZATIONAL_UNIT/CN=$$CA_COMMON_NAME" \
-            -keyout /srv/ca/ca.key -out /srv/ssl/ca.pem
+            -keyout /srv/ca/ca.key -out /srv/ca/ca.pem
         fi
 
-        # Generate server cert if missing or empty
-        if [ ! -s /srv/ssl/server_certificate.pem ]; then
-          if [ ! -f /srv/ssl/server_key.pem ]; then
-            openssl req -verbose -newkey rsa:2048 -nodes -utf8 \
-              -subj "/C=$$DEFAULT_COUNTRY/ST=$$DEFAULT_STATE/L=$$DEFAULT_LOCALITY/O=$$DEFAULT_ORGANIZATION/OU=$$DEFAULT_ORGANIZATIONAL_UNIT/CN=$$SERVER_COMMON_NAME" \
-              -keyout /srv/ssl/server_key.pem -out /tmp/server.csr
-          else
-            openssl req -verbose -new -utf8 \
-              -subj "/C=$$DEFAULT_COUNTRY/ST=$$DEFAULT_STATE/L=$$DEFAULT_LOCALITY/O=$$DEFAULT_ORGANIZATION/OU=$$DEFAULT_ORGANIZATIONAL_UNIT/CN=$$SERVER_COMMON_NAME" \
-              -key /srv/ssl/server_key.pem -out /tmp/server.csr
-          fi
-
-          printf "subjectAltName=$$SERVER_SAN\n" > /tmp/ext.cnf
-          rm -f /srv/ssl/server_certificate.pem || true
-          openssl x509 -req -in /tmp/server.csr -CA /srv/ssl/ca.pem -CAkey /srv/ca/ca.key -CAcreateserial -CAserial /srv/ca/ca.srl \
-            -out /srv/ssl/server_certificate.pem -days $$DEFAULT_VALID_DAYS -extfile /tmp/ext.cnf
+        # Generate server cert (always)
+        if [ ! -f /srv/ssl/server_key.pem ]; then
+          openssl req -verbose -newkey rsa:2048 -nodes -utf8 \
+            -subj "/C=$$DEFAULT_COUNTRY/ST=$$DEFAULT_STATE/L=$$DEFAULT_LOCALITY/O=$$DEFAULT_ORGANIZATION/OU=$$DEFAULT_ORGANIZATIONAL_UNIT/CN=$$SERVER_COMMON_NAME" \
+            -keyout /srv/ssl/server_key.pem -out /tmp/server.csr
+        else
+          openssl req -verbose -new -utf8 \
+            -subj "/C=$$DEFAULT_COUNTRY/ST=$$DEFAULT_STATE/L=$$DEFAULT_LOCALITY/O=$$DEFAULT_ORGANIZATION/OU=$$DEFAULT_ORGANIZATIONAL_UNIT/CN=$$SERVER_COMMON_NAME" \
+            -key /srv/ssl/server_key.pem -out /tmp/server.csr
         fi
+
+        printf "subjectAltName=$$SERVER_SAN\n" > /tmp/ext.cnf
+        rm -f /srv/ssl/server_certificate.pem
+        openssl x509 -req -in /tmp/server.csr -CA /srv/ca/ca.pem -CAkey /srv/ca/ca.key -CAcreateserial -CAserial /srv/ca/ca.srl \
+          -out /srv/ssl/server_certificate.pem -days $$DEFAULT_VALID_DAYS -extfile /tmp/ext.cnf
 
         rm -f /tmp/server.csr /tmp/ext.cnf
         ls -l /srv/ca /srv/ssl
@@ -156,7 +155,7 @@ configs:
         server_name ca.test;
 
         location / {
-          root /srv/ssl;
+          root /srv/ca;
           try_files /ca.pem =404;
           default_type application/x-x509-ca-cert;
           add_header Content-Disposition 'attachment; filename="ca.pem"';
