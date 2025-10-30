@@ -46,41 +46,54 @@ services:
     restart: "no"
     volumes:
       - ssl:/srv/ssl
+      - ca:/srv/ca
     configs:
       - source: ssl_params
         target: /opt/ssl_params.sh
-    command: >
-      sh -c '
-      set -e
-      cd /srv/ssl
-      . /opt/ssl_params.sh
+    entrypoint: ""
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        . /opt/ssl_params.sh
+        openssl version -a
 
-      # Generate CA if missing
-      if [ ! -f ca.pem ]; then
-        openssl req -x509 -newkey rsa:4096 -days $DEFAULT_VALID_DAYS -nodes -utf8 \
-          -subj "/C=$DEFAULT_COUNTRY/ST=$DEFAULT_STATE/L=$DEFAULT_LOCALITY/O=$DEFAULT_ORGANIZATION/OU=$DEFAULT_ORGANIZATIONAL_UNIT/CN=$CA_COMMON_NAME" \
-          -keyout /tmp/ca.key -out ca.pem
-      fi
+        # Generate CA if missing or empty, or if CA key is missing
+        if [ ! -s /srv/ssl/ca.pem ] || [ ! -s /srv/ca/ca.key ]; then
+          rm -f /srv/ssl/ca.pem /srv/ca/ca.srl
+          openssl req -verbose -x509 -newkey rsa:4096 -days $$DEFAULT_VALID_DAYS -nodes -utf8 \
+            -subj "/C=$$DEFAULT_COUNTRY/ST=$$DEFAULT_STATE/L=$$DEFAULT_LOCALITY/O=$$DEFAULT_ORGANIZATION/OU=$$DEFAULT_ORGANIZATIONAL_UNIT/CN=$$CA_COMMON_NAME" \
+            -keyout /srv/ca/ca.key -out /srv/ssl/ca.pem
+        fi
 
-      # Generate server cert with SAN
-      if [ ! -f server_key.pem ]; then
-        openssl req -newkey rsa:2048 -nodes -utf8 \
-          -subj "/C=$DEFAULT_COUNTRY/ST=$DEFAULT_STATE/L=$DEFAULT_LOCALITY/O=$DEFAULT_ORGANIZATION/OU=$DEFAULT_ORGANIZATIONAL_UNIT/CN=$SERVER_COMMON_NAME" \
-          -keyout server_key.pem -out /tmp/server.csr
+        # Generate server cert if missing or empty
+        if [ ! -s /srv/ssl/server_certificate.pem ]; then
+          if [ ! -f /srv/ssl/server_key.pem ]; then
+            openssl req -verbose -newkey rsa:2048 -nodes -utf8 \
+              -subj "/C=$$DEFAULT_COUNTRY/ST=$$DEFAULT_STATE/L=$$DEFAULT_LOCALITY/O=$$DEFAULT_ORGANIZATION/OU=$$DEFAULT_ORGANIZATIONAL_UNIT/CN=$$SERVER_COMMON_NAME" \
+              -keyout /srv/ssl/server_key.pem -out /tmp/server.csr
+          else
+            openssl req -verbose -new -utf8 \
+              -subj "/C=$$DEFAULT_COUNTRY/ST=$$DEFAULT_STATE/L=$$DEFAULT_LOCALITY/O=$$DEFAULT_ORGANIZATION/OU=$$DEFAULT_ORGANIZATIONAL_UNIT/CN=$$SERVER_COMMON_NAME" \
+              -key /srv/ssl/server_key.pem -out /tmp/server.csr
+          fi
 
-        openssl x509 -req -in /tmp/server.csr -CA ca.pem -CAkey /tmp/ca.key -CAcreateserial \
-          -out server_certificate.pem -days $DEFAULT_VALID_DAYS \
-          -extfile <(printf "subjectAltName=$SERVER_SAN")
-      fi
+          printf "subjectAltName=$$SERVER_SAN\n" > /tmp/ext.cnf
+          rm -f /srv/ssl/server_certificate.pem || true
+          openssl x509 -req -in /tmp/server.csr -CA /srv/ssl/ca.pem -CAkey /srv/ca/ca.key -CAcreateserial -CAserial /srv/ca/ca.srl \
+            -out /srv/ssl/server_certificate.pem -days $$DEFAULT_VALID_DAYS -extfile /tmp/ext.cnf
+        fi
 
-      rm -f /tmp/ca.key /tmp/server.csr
-      '
+        rm -f /tmp/server.csr /tmp/ext.cnf
+        ls -l /srv/ca /srv/ssl
 
 volumes:
   postgres:
   data:
   letsencrypt:
   ssl:
+  ca:
 
 configs:
   http:
@@ -159,4 +172,4 @@ configs:
 
       # Server
       SERVER_COMMON_NAME="test"
-      SERVER_SAN="DNS:${SERVER_COMMON_NAME},DNS:*.test"
+      SERVER_SAN="DNS:$${SERVER_COMMON_NAME},DNS:*.test"
