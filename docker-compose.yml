@@ -60,7 +60,24 @@ services:
         set -e
         . /opt/ssl_params.sh
         SERVER_SAN="DNS:$${SERVER_COMMON_NAME},DNS:*.test"
-        [ -n "$$SERVER_SAN_EXTRA" ] && SERVER_SAN="$$SERVER_SAN,$$SERVER_SAN_EXTRA"
+        # Optional extra SANs validation (comma-separated; tokens like DNS:name or IP:addr)
+        if [ -n "$$SERVER_SAN_EXTRA" ]; then
+          EXTRA_CLEAN="$(echo "$$SERVER_SAN_EXTRA" | tr -d '[:space:]')"
+          EXTRA_VALID=""
+          OLD_IFS="$$IFS"; IFS=,
+          for tok in $$EXTRA_CLEAN; do
+            case "$$tok" in
+              DNS:*|IP:*)
+                if [ -z "$$EXTRA_VALID" ]; then EXTRA_VALID="$$tok"; else EXTRA_VALID="$$EXTRA_VALID,$$tok"; fi
+                ;;
+              *)
+                echo "[ssl] WARN: invalid SAN token skipped: '$$tok'" >&2
+                ;;
+            esac
+          done
+          IFS="$$OLD_IFS"
+          [ -n "$$EXTRA_VALID" ] && SERVER_SAN="$$SERVER_SAN,$$EXTRA_VALID"
+        fi
         openssl version -a
 
         # Generate CA if missing or empty, or if CA key is missing
