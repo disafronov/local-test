@@ -9,21 +9,22 @@ Run a local Nginx Proxy Manager with a self-signed CA and server certificates fo
 docker compose up -d
 ```
 
-DNS: ensure the `*.test` zone resolves to `127.0.0.1` (out of scope here).
+DNS: ensure `local.test` and `*.local.test` resolve to `127.0.0.1` (out of scope here).
 
-Download and install the CA certificate: http://ca.test/
+Download and install the CA certificate: http://local.test/ca.pem
+Note: your browser may warn about an untrusted connection when downloading the CA. This is expected for the initial bootstrap with a self-signed CA.
 
-Open: https://test
+Open: https://local.test
 
 ## What gets generated
 
 - Private CA (persisted in volume `ca`):
   - `/srv/ca/ca.key` — CA private key
+  - `/srv/ca/ca.pem` — CA certificate (public)
   - `/srv/ca/ca.srl` — CA serial file
 - Server materials (shared volume `ssl`):
-  - `/srv/ssl/ca.pem` — CA certificate (public)
-  - `/srv/ssl/server_key.pem` — server private key
-  - `/srv/ssl/server_certificate.pem` — server certificate signed by the CA
+  - `/srv/ssl/privkey.pem` — server private key
+  - `/srv/ssl/cert.pem` — server certificate signed by the CA
 
 ## Services
 
@@ -31,7 +32,7 @@ Open: https://test
 - `app`: `jc21/nginx-proxy-manager`
 - `db`: `postgres` — keeps NPM data separate, so you can safely reset NPM without touching cert volumes
 
-Ports: 80 (HTTP), 443 (HTTPS), 81 (NPM admin — bound to 127.1.0.1 only)
+Ports: 80 (HTTP), 443 (HTTPS), 81 (NPM admin — bound to 127.0.0.1 only)
 
 ## Notes
 
