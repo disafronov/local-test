@@ -6,7 +6,7 @@ services:
       - "80:80"
       - "443:443"
       # Admin Web Port:
-      - "127.1.0.1:81:81"
+      - "127.0.0.1:81:81"
     volumes:
       - data:/data
       - letsencrypt:/etc/letsencrypt
@@ -60,9 +60,10 @@ services:
       - |
         set -e
         . /opt/ssl_params.sh
-        SERVER_SAN="DNS:$${SERVER_COMMON_NAME},DNS:*.test"
+        SERVER_SAN="DNS:$${SERVER_COMMON_NAME},DNS:*.$${SERVER_COMMON_NAME}"
         # Optional extra SANs validation (comma-separated; tokens like DNS:name or IP:addr)
         if [ -n "$$SERVER_SAN_EXTRA" ]; then
+          echo "[ssl] INFO: adding extra SANs: '$$SERVER_SAN_EXTRA'"
           EXTRA_CLEAN="$(echo "$$SERVER_SAN_EXTRA" | tr -d '[:space:]')"
           EXTRA_VALID=""
           OLD_IFS="$$IFS"; IFS=,
@@ -81,29 +82,27 @@ services:
         fi
         openssl version -a
 
-        # Generate CA if missing or empty, or if CA key is missing
+        # Generate CA if missing or empty
         if [ ! -s /srv/ca/ca.pem ] || [ ! -s /srv/ca/ca.key ]; then
           rm -f /srv/ca/ca.pem /srv/ca/ca.srl
-          openssl req -verbose -x509 -newkey rsa:4096 -days $$DEFAULT_VALID_DAYS -nodes -utf8 \
+          openssl ecparam -name "$$DEFAULT_EC_CURVE" -genkey -noout -out /srv/ca/ca.key
+          openssl req -verbose -x509 -new -key /srv/ca/ca.key -days $$DEFAULT_VALID_DAYS -sha384 -utf8 \
             -subj "/C=$$DEFAULT_COUNTRY/ST=$$DEFAULT_STATE/L=$$DEFAULT_LOCALITY/O=$$DEFAULT_ORGANIZATION/OU=$$DEFAULT_ORGANIZATIONAL_UNIT/CN=$$CA_COMMON_NAME" \
-            -keyout /srv/ca/ca.key -out /srv/ca/ca.pem
+            -out /srv/ca/ca.pem
         fi
 
-        # Generate server cert (always)
-        if [ ! -f /srv/ssl/server_key.pem ]; then
-          openssl req -verbose -newkey rsa:2048 -nodes -utf8 \
-            -subj "/C=$$DEFAULT_COUNTRY/ST=$$DEFAULT_STATE/L=$$DEFAULT_LOCALITY/O=$$DEFAULT_ORGANIZATION/OU=$$DEFAULT_ORGANIZATIONAL_UNIT/CN=$$SERVER_COMMON_NAME" \
-            -keyout /srv/ssl/server_key.pem -out /tmp/server.csr
-        else
-          openssl req -verbose -new -utf8 \
-            -subj "/C=$$DEFAULT_COUNTRY/ST=$$DEFAULT_STATE/L=$$DEFAULT_LOCALITY/O=$$DEFAULT_ORGANIZATION/OU=$$DEFAULT_ORGANIZATIONAL_UNIT/CN=$$SERVER_COMMON_NAME" \
-            -key /srv/ssl/server_key.pem -out /tmp/server.csr
+        # Generate server key if missing or empty; create CSR
+        if [ ! -s /srv/ssl/privkey.pem ]; then
+          openssl ecparam -name "$$DEFAULT_EC_CURVE" -genkey -noout -out /srv/ssl/privkey.pem
         fi
+        openssl req -verbose -new -utf8 \
+          -subj "/C=$$DEFAULT_COUNTRY/ST=$$DEFAULT_STATE/L=$$DEFAULT_LOCALITY/O=$$DEFAULT_ORGANIZATION/OU=$$DEFAULT_ORGANIZATIONAL_UNIT/CN=$$SERVER_COMMON_NAME" \
+          -key /srv/ssl/privkey.pem -out /tmp/server.csr
 
-        printf "subjectAltName=$$SERVER_SAN\n" > /tmp/ext.cnf
-        rm -f /srv/ssl/server_certificate.pem
+        printf "basicConstraints=CA:FALSE\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth,clientAuth\nsubjectAltName=$$SERVER_SAN\n" > /tmp/ext.cnf
+        rm -f /srv/ssl/cert.pem
         openssl x509 -req -in /tmp/server.csr -CA /srv/ca/ca.pem -CAkey /srv/ca/ca.key -CAcreateserial -CAserial /srv/ca/ca.srl \
-          -out /srv/ssl/server_certificate.pem -days $$DEFAULT_VALID_DAYS -extfile /tmp/ext.cnf
+          -out /srv/ssl/cert.pem -days $$DEFAULT_VALID_DAYS -extfile /tmp/ext.cnf -sha384
 
         rm -f /tmp/server.csr /tmp/ext.cnf
         ls -l /srv/ca /srv/ssl
@@ -126,7 +125,7 @@ configs:
         listen 80;
         listen [::]:80;
 
-        server_name test;
+        server_name local.test;
 
         proxy_set_header Upgrade $$http_upgrade;
         proxy_set_header Connection $$http_connection;
@@ -152,7 +151,7 @@ configs:
         listen 80;
         listen [::]:80;
 
-        server_name ca.test;
+        server_name ca.local.test;
 
         location / {
           root /srv/ca;
@@ -171,8 +170,8 @@ configs:
       listen [::]:443 ssl;
 
       # Custom SSL
-      ssl_certificate /srv/ssl/server_certificate.pem;
-      ssl_certificate_key /srv/ssl/server_key.pem;
+      ssl_certificate /srv/ssl/cert.pem;
+      ssl_certificate_key /srv/ssl/privkey.pem;
 
       # Force SSL
       include conf.d/include/force-ssl.conf;
@@ -180,7 +179,8 @@ configs:
   ssl_params:
     content: |
       # Default parameters
-      DEFAULT_VALID_DAYS=3650
+      DEFAULT_EC_CURVE="prime256v1"
+      DEFAULT_VALID_DAYS=365
       DEFAULT_COUNTRY="XX"
       DEFAULT_STATE="Nowhere"
       DEFAULT_LOCALITY="Unknown"
@@ -188,7 +188,7 @@ configs:
       DEFAULT_ORGANIZATIONAL_UNIT="Dev"
 
       # CA
-      CA_COMMON_NAME="ca.test"
+      CA_COMMON_NAME="Local Test"
 
       # Server
-      SERVER_COMMON_NAME="test"
+      SERVER_COMMON_NAME="local.test"
