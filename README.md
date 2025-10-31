@@ -1,6 +1,6 @@
 # Local NPM + Dev CA (minimal)
 
-Run a local Nginx Proxy Manager with a self-signed CA and server certificates for the `*.test` domain.
+Run a local Nginx Proxy Manager with a self-signed CA and server certificates for the `*.local.test` domain.
 
 ## Quick start
 
