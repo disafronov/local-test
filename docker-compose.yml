@@ -134,6 +134,12 @@ configs:
         access_log /data/logs/npm_access.log proxy;
         error_log /data/logs/npm_error.log warn;
 
+        location = /ca.pem {
+          alias /srv/ca/ca.pem;
+          default_type application/x-x509-ca-cert;
+          add_header Content-Disposition 'attachment; filename="ca.pem"';
+        }
+
         location / {
           proxy_set_header Upgrade $$http_upgrade;
           proxy_set_header Connection $$http_connection;
@@ -145,23 +151,6 @@ configs:
 
         # Custom
         include /data/nginx/custom/server_proxy[.]conf;
-      }
-
-      server {
-        listen 80;
-        listen [::]:80;
-
-        server_name ca.local.test;
-
-        location / {
-          root /srv/ca;
-          try_files /ca.pem =404;
-          default_type application/x-x509-ca-cert;
-          add_header Content-Disposition 'attachment; filename="ca.pem"';
-        }
-
-        access_log /data/logs/ca_access.log;
-        error_log /data/logs/ca_error.log warn;
       }
 
   server_proxy:
