@@ -1,3 +1,9 @@
+## [1.1.2](https://github.com/disafronov/local-test/compare/v1.1.1...v1.1.2) (2026-01-11)
+
+### Bug Fixes
+
+* enhance SSL certificate generation logic in docker-compose.yml ([15748ae](https://github.com/disafronov/local-test/commit/15748ae58ba3124006be34bf8235e5d8087d59a6))
+
 ## [1.1.1](https://github.com/disafronov/local-test/compare/v1.1.0...v1.1.1) (2026-01-11)
 
 ### Bug Fixes
