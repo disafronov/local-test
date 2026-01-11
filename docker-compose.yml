@@ -41,6 +41,11 @@ services:
       POSTGRES_USER: 'npm'
     volumes:
       - postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   ssl:
     image: alpine/openssl:latest
