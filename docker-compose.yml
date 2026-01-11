@@ -1,5 +1,5 @@
 services:
-  nginx-proxy-manager:
+  npm-server:
     image: "jc21/nginx-proxy-manager:latest"
     restart: always
     ports:
@@ -130,7 +130,7 @@ services:
       - VIRTUAL_HOST=portainer.local.test
       - VIRTUAL_PORT=9000
     depends_on:
-      nginx-proxy-manager:
+      npm-server:
         condition: service_healthy
 
   watchtower:
