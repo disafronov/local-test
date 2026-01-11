@@ -72,6 +72,7 @@ services:
       - |
         set -e
         . /opt/ssl_params.sh
+
         SERVER_SAN="DNS:$${SERVER_COMMON_NAME},DNS:*.$${SERVER_COMMON_NAME}"
         # Optional extra SANs validation (comma-separated; tokens like DNS:name or IP:addr)
         if [ -n "$$SERVER_SAN_EXTRA" ]; then
@@ -82,7 +83,7 @@ services:
           for tok in $$EXTRA_CLEAN; do
             case "$$tok" in
               DNS:*|IP:*)
-                if [ -z "$$EXTRA_VALID" ]; then EXTRA_VALID="$$tok"; else EXTRA_VALID="$$EXTRA_VALID,$$tok"; fi
+                [ -z "$$EXTRA_VALID" ] && EXTRA_VALID="$$tok" || EXTRA_VALID="$$EXTRA_VALID,$$tok"
                 ;;
               *)
                 echo "[ssl] WARN: invalid SAN token skipped: '$$tok'" >&2
@@ -92,28 +93,31 @@ services:
           IFS="$$OLD_IFS"
           [ -n "$$EXTRA_VALID" ] && SERVER_SAN="$$SERVER_SAN,$$EXTRA_VALID"
         fi
-        openssl version -a
 
         # Generate CA if missing or empty
         if [ ! -s /srv/ca/ca.pem ] || [ ! -s /srv/ca/ca.key ]; then
-          rm -f /srv/ca/ca.pem /srv/ca/ca.srl
+          rm -f /srv/ca/ca.pem /srv/ca/ca.key /srv/ca/ca.srl
+          # EC key for CA
           openssl ecparam -name "$$DEFAULT_EC_CURVE" -genkey -noout -out /srv/ca/ca.key
-          openssl req -verbose -x509 -new -key /srv/ca/ca.key -days $$DEFAULT_VALID_DAYS -sha384 -utf8 \
+          # Self-signed CA certificate
+          openssl req -x509 -new -nodes -key /srv/ca/ca.key -sha256 -days $$DEFAULT_VALID_DAYS \
             -subj "/C=$$DEFAULT_COUNTRY/ST=$$DEFAULT_STATE/L=$$DEFAULT_LOCALITY/O=$$DEFAULT_ORGANIZATION/OU=$$DEFAULT_ORGANIZATIONAL_UNIT/CN=$$CA_COMMON_NAME" \
+            -addext "basicConstraints=critical,CA:TRUE" \
+            -addext "keyUsage=critical,keyCertSign,cRLSign" \
+            -addext "subjectKeyIdentifier=hash" \
+            -addext "authorityKeyIdentifier=keyid,issuer" \
             -out /srv/ca/ca.pem
         fi
 
-        # Generate server key if missing or empty; create CSR
-        if [ ! -s /srv/ssl/privkey.pem ]; then
-          openssl ecparam -name "$$DEFAULT_EC_CURVE" -genkey -noout -out /srv/ssl/privkey.pem
-        fi
-        openssl req -verbose -new -utf8 \
-          -subj "/C=$$DEFAULT_COUNTRY/ST=$$DEFAULT_STATE/L=$$DEFAULT_LOCALITY/O=$$DEFAULT_ORGANIZATION/OU=$$DEFAULT_ORGANIZATIONAL_UNIT/CN=$$SERVER_COMMON_NAME" \
-          -key /srv/ssl/privkey.pem -out /tmp/server.csr
+        # Generate server key if missing; create CSR
+        [ ! -s /srv/ssl/privkey.pem ] && openssl ecparam -name "$$DEFAULT_EC_CURVE" -genkey -noout -out /srv/ssl/privkey.pem
+        openssl req -new -key /srv/ssl/privkey.pem -out /tmp/server.csr \
+          -subj "/C=$$DEFAULT_COUNTRY/ST=$$DEFAULT_STATE/L=$$DEFAULT_LOCALITY/O=$$DEFAULT_ORGANIZATION/OU=$$DEFAULT_ORGANIZATIONAL_UNIT/CN=$$SERVER_COMMON_NAME"
 
+        # Generate server certificate signed by CA
         printf "basicConstraints=CA:FALSE\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth,clientAuth\nsubjectAltName=$$SERVER_SAN\n" > /tmp/ext.cnf
         rm -f /srv/ssl/cert.pem
-        openssl x509 -req -in /tmp/server.csr -CA /srv/ca/ca.pem -CAkey /srv/ca/ca.key -CAcreateserial -CAserial /srv/ca/ca.srl \
+        openssl x509 -req -in /tmp/server.csr -CA /srv/ca/ca.pem -CAkey /srv/ca/ca.key -CAcreateserial \
           -out /srv/ssl/cert.pem -days $$DEFAULT_VALID_DAYS -extfile /tmp/ext.cnf -sha384
 
         rm -f /tmp/server.csr /tmp/ext.cnf
