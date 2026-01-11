@@ -15,9 +15,9 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     configs:
-      - source: http
+      - source: npm-http
         target: /data/nginx/custom/http.conf
-      - source: server_proxy
+      - source: npm-server-proxy
         target: /data/nginx/custom/server_proxy.conf
     depends_on:
       npm-postgresql:
@@ -63,7 +63,7 @@ services:
     environment:
       - SERVER_SAN_EXTRA
     configs:
-      - source: ssl_params
+      - source: npm-ssl-params
         target: /opt/ssl_params.sh
     entrypoint: ""
     command:
@@ -157,7 +157,7 @@ volumes:
   portainer:
 
 configs:
-  http:
+  npm-http:
     content: |
       server {
         set $$forward_scheme http;
@@ -224,7 +224,7 @@ configs:
         include /data/nginx/custom/server_proxy[.]conf;
       }
 
-  server_proxy:
+  npm-server-proxy:
     content: |
       listen 443 ssl;
       listen [::]:443 ssl;
@@ -236,7 +236,7 @@ configs:
       # Force SSL
       include conf.d/include/force-ssl.conf;
 
-  ssl_params:
+  npm-ssl-params:
     content: |
       # Default parameters
       DEFAULT_EC_CURVE="prime256v1"
