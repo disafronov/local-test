@@ -107,12 +107,21 @@ services:
         rm -f /tmp/server.csr /tmp/ext.cnf
         ls -l /srv/ca /srv/ssl
 
+  portainer:
+    image: portainer/portainer-ce:latest
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer:/data
+    command: --http-enabled
+
 volumes:
   postgres:
   data:
   letsencrypt:
   ssl:
   ca:
+  portainer:
 
 configs:
   http:
@@ -139,6 +148,35 @@ configs:
           default_type application/x-x509-ca-cert;
           add_header Content-Disposition 'attachment; filename="ca.pem"';
         }
+
+        location / {
+          proxy_set_header Upgrade $$http_upgrade;
+          proxy_set_header Connection $$http_connection;
+          proxy_http_version 1.1;
+
+          # Proxy!
+          include conf.d/include/proxy.conf;
+        }
+
+        # Custom
+        include /data/nginx/custom/server_proxy[.]conf;
+      }
+      server {
+        set $$forward_scheme http;
+        set $$server         "portainer";
+        set $$port           9000;
+
+        listen 80;
+        listen [::]:80;
+
+        server_name portainer.local.test;
+
+        proxy_set_header Upgrade $$http_upgrade;
+        proxy_set_header Connection $$http_connection;
+        proxy_http_version 1.1;
+
+        access_log /data/logs/portainer_access.log proxy;
+        error_log /data/logs/portainer_error.log warn;
 
         location / {
           proxy_set_header Upgrade $$http_upgrade;
