@@ -8,10 +8,10 @@ services:
       # Admin Web Port:
       - "127.0.0.1:81:81"
     volumes:
-      - data:/data
-      - letsencrypt:/etc/letsencrypt
-      - ssl:/srv/ssl:ro
-      - ca:/srv/ca:ro
+      - npm-data:/data
+      - npm-letsencrypt:/etc/letsencrypt
+      - npm-ssl:/srv/ssl:ro
+      - npm-ca:/srv/ca:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     configs:
@@ -47,7 +47,7 @@ services:
       POSTGRES_PASSWORD: "${DB_PASSWORD:-kMm0rB8GMzhF9gD$!}"
       POSTGRES_USER: 'npm'
     volumes:
-      - postgres:/var/lib/postgresql
+      - npm-postgres:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -58,8 +58,8 @@ services:
     image: alpine/openssl:latest
     restart: "no"
     volumes:
-      - ssl:/srv/ssl
-      - ca:/srv/ca
+      - npm-ssl:/srv/ssl
+      - npm-ca:/srv/ca
     environment:
       - SERVER_SAN_EXTRA
     configs:
@@ -149,11 +149,11 @@ services:
     command: --no-color
 
 volumes:
-  postgres:
-  data:
-  letsencrypt:
-  ssl:
-  ca:
+  npm-postgres:
+  npm-data:
+  npm-letsencrypt:
+  npm-ssl:
+  npm-ca:
   portainer:
 
 configs:
