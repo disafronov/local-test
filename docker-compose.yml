@@ -20,8 +20,10 @@ services:
       - source: server_proxy
         target: /data/nginx/custom/server_proxy.conf
     depends_on:
-      - db
-      - ssl
+      db:
+        condition: service_healthy
+      ssl:
+        condition: service_completed_successfully
     environment:
       # Postgres parameters:
       DB_POSTGRES_HOST: 'db'
