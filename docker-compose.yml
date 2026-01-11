@@ -114,6 +114,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer:/data
     command: --http-enabled
+    depends_on:
+      - app
 
   watchtower:
     image: nickfedor/watchtower:latest
