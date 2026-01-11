@@ -1,3 +1,9 @@
+## [1.1.3](https://github.com/disafronov/local-test/compare/v1.1.2...v1.1.3) (2026-01-11)
+
+### Bug Fixes
+
+* update SSL certificate generation to use SHA-384 in docker-compose.yml ([aa24744](https://github.com/disafronov/local-test/commit/aa24744e4ab3402d704f0f5052d5089ffcb7e48c))
+
 ## [1.1.2](https://github.com/disafronov/local-test/compare/v1.1.1...v1.1.2) (2026-01-11)
 
 ### Bug Fixes
