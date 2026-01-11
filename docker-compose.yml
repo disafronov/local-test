@@ -125,7 +125,10 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer:/data
-    command: --http-enabled
+    command: -H unix:///var/run/docker.sock
+    environment:
+      - VIRTUAL_HOST=portainer.local.test
+      - VIRTUAL_PORT=9000
     depends_on:
       app:
         condition: service_healthy
