@@ -117,8 +117,14 @@ services:
         # Generate server certificate signed by CA
         printf "basicConstraints=CA:FALSE\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth,clientAuth\nsubjectAltName=$$SERVER_SAN\n" > /tmp/ext.cnf
         rm -f /srv/ssl/cert.pem
-        openssl x509 -req -in /tmp/server.csr -CA /srv/ca/ca.pem -CAkey /srv/ca/ca.key -CAcreateserial \
-          -out /srv/ssl/cert.pem -days $$DEFAULT_VALID_DAYS -extfile /tmp/ext.cnf -sha384
+        # Use existing serial file if available, otherwise create new one
+        if [ -f /srv/ca/ca.srl ]; then
+          openssl x509 -req -in /tmp/server.csr -CA /srv/ca/ca.pem -CAkey /srv/ca/ca.key -CAserial /srv/ca/ca.srl \
+            -out /srv/ssl/cert.pem -days $$DEFAULT_VALID_DAYS -extfile /tmp/ext.cnf -sha384
+        else
+          openssl x509 -req -in /tmp/server.csr -CA /srv/ca/ca.pem -CAkey /srv/ca/ca.key -CAcreateserial \
+            -out /srv/ssl/cert.pem -days $$DEFAULT_VALID_DAYS -extfile /tmp/ext.cnf -sha384
+        fi
 
         rm -f /tmp/server.csr /tmp/ext.cnf
         ls -l /srv/ca /srv/ssl
