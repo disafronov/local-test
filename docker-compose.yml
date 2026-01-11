@@ -100,7 +100,7 @@ services:
           # EC key for CA
           openssl ecparam -name "$$DEFAULT_EC_CURVE" -genkey -noout -out /srv/ca/ca.key
           # Self-signed CA certificate
-          openssl req -x509 -new -nodes -key /srv/ca/ca.key -sha256 -days $$DEFAULT_VALID_DAYS \
+          openssl req -x509 -new -nodes -key /srv/ca/ca.key -sha384 -days $$DEFAULT_VALID_DAYS \
             -subj "/C=$$DEFAULT_COUNTRY/ST=$$DEFAULT_STATE/L=$$DEFAULT_LOCALITY/O=$$DEFAULT_ORGANIZATION/OU=$$DEFAULT_ORGANIZATIONAL_UNIT/CN=$$CA_COMMON_NAME" \
             -addext "basicConstraints=critical,CA:TRUE" \
             -addext "keyUsage=critical,keyCertSign,cRLSign" \
