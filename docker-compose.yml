@@ -1,5 +1,5 @@
 services:
-  app:
+  nginx-proxy-manager:
     image: "jc21/nginx-proxy-manager:latest"
     restart: always
     ports:
@@ -20,13 +20,13 @@ services:
       - source: server_proxy
         target: /data/nginx/custom/server_proxy.conf
     depends_on:
-      db:
+      npm-postgresql:
         condition: service_healthy
-      ssl:
+      npm-ssl:
         condition: service_completed_successfully
     environment:
       # Postgres parameters:
-      DB_POSTGRES_HOST: 'db'
+      DB_POSTGRES_HOST: 'npm-postgresql'
       DB_POSTGRES_NAME: 'npm'
       DB_POSTGRES_PASSWORD: "${DB_PASSWORD:-kMm0rB8GMzhF9gD$!}"
       DB_POSTGRES_PORT: '5432'
@@ -39,7 +39,7 @@ services:
       timeout: 3s
       retries: 10
 
-  db:
+  npm-postgresql:
     image: postgres:latest
     restart: always
     environment:
@@ -54,7 +54,7 @@ services:
       timeout: 3s
       retries: 10
 
-  ssl:
+  npm-ssl:
     image: alpine/openssl:latest
     restart: "no"
     volumes:
@@ -130,7 +130,7 @@ services:
       - VIRTUAL_HOST=portainer.local.test
       - VIRTUAL_PORT=9000
     depends_on:
-      app:
+      nginx-proxy-manager:
         condition: service_healthy
 
   watchtower:
