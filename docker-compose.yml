@@ -115,6 +115,21 @@ services:
       - portainer:/data
     command: --http-enabled
 
+  watchtower:
+    image: nickfedor/watchtower:latest
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_INCLUDE_RESTARTING=true
+      - WATCHTOWER_POLL_INTERVAL=10800
+      - WATCHTOWER_NOTIFICATIONS=${WATCHTOWER_NOTIFICATIONS:-}
+      - WATCHTOWER_NOTIFICATION_URL=${WATCHTOWER_NOTIFICATION_URL:-}
+      - WATCHTOWER_NOTIFICATIONS_HOSTNAME=${WATCHTOWER_NOTIFICATIONS_HOSTNAME:-}
+      - TZ=${TZ:-UTC}
+    command: --no-color
+
 volumes:
   postgres:
   data:
