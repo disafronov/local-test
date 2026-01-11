@@ -31,6 +31,11 @@ services:
       DB_POSTGRES_USER: 'npm'
       # Uncomment this if IPv6 is not enabled on your host
       # DISABLE_IPV6: 'true'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:81"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   db:
     image: postgres:latest
@@ -120,7 +125,8 @@ services:
       - portainer:/data
     command: --http-enabled
     depends_on:
-      - app
+      app:
+        condition: service_healthy
 
   watchtower:
     image: nickfedor/watchtower:latest
