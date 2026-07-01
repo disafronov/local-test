@@ -1,3 +1,5 @@
+## [1.1.4](https://github.com/disafronov/local-test/compare/v1.1.3...v1.1.4) (2026-07-01)
+
 ## [1.1.3](https://github.com/disafronov/local-test/compare/v1.1.2...v1.1.3) (2026-01-11)
 
 ### Bug Fixes
