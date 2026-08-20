@@ -3,10 +3,10 @@ services:
     image: "jc21/nginx-proxy-manager:latest"
     restart: always
     ports:
-      - "${HOST_PORT_HTTP:-80}:80"
-      - "${HOST_PORT_HTTPS:-443}:443"
+      - "${HOST_MAIN_ADDR:-0.0.0.0}:${HOST_MAIN_HTTP:-80}:80"
+      - "${HOST_MAIN_ADDR:-0.0.0.0}:${HOST_MAIN_HTTPS:-443}:443"
       # Admin Web Port (bound to 127.0.0.1 by default):
-      - "${HOST_ADMIN_ADDR:-127.0.0.1}:${HOST_ADMIN_PORT:-81}:81"
+      - "${HOST_ADMIN_ADDR:-127.0.0.1}:${HOST_ADMIN_HTTP:-81}:81"
     volumes:
       - npm-data:/data
       - npm-letsencrypt:/etc/letsencrypt

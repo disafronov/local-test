@@ -38,14 +38,15 @@ Customize host ports via environment variables:
 
 | Variable            | Default     | Description                             |
 |---------------------|-------------|-----------------------------------------|
-| `HOST_PORT_HTTP`    | `80`        | Host port for HTTP (container: 80)      |
-| `HOST_PORT_HTTPS`   | `443`       | Host port for HTTPS (container: 443)    |
+| `HOST_MAIN_HTTP`    | `80`        | Host port for HTTP (container: 80)      |
+| `HOST_MAIN_HTTPS`   | `443`       | Host port for HTTPS (container: 443)    |
+| `HOST_MAIN_ADDR`    | `0.0.0.0`   | Host address for main port bindings     |
 | `HOST_ADMIN_PORT`   | `81`        | Host port for NPM admin (container: 81) |
 | `HOST_ADMIN_ADDR`   | `127.0.0.1` | Host address for NPM admin port binding |
 
 ```bash
 # Use non-default ports
-HOST_PORT_HTTP=8080 HOST_PORT_HTTPS=8443 HOST_ADMIN_PORT=9081 \
+HOST_MAIN_HTTP=8080 HOST_MAIN_HTTPS=8443 HOST_MAIN_ADDR=127.0.0.1 HOST_ADMIN_PORT=9081 \
   docker compose up -d
 ```
 
