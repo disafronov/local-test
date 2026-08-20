@@ -11,10 +11,10 @@ docker compose up -d
 
 DNS: ensure `local.test` and `*.local.test` resolve to `127.0.0.1` ([Linux](linux.md)).
 
-Download and install the CA certificate: http://local.test/ca.pem
+Download and install the CA certificate: <http://local.test/ca.pem>
 Note: your browser may warn about an untrusted connection when downloading the CA. This is expected for the initial bootstrap with a self-signed CA.
 
-Open: https://local.test
+Open: <https://local.test>
 
 ## What gets generated
 
@@ -62,7 +62,7 @@ Service dependencies: services start in order with healthchecks ensuring readine
 
 - Compose config values are in `configs.npm-ssl-params` and are sourced by the `npm-ssl` service.
 - CA serial is kept private under the `npm-ca` volume (`/srv/ca/ca.srl`).
-- If https://local.test still shows a warning, restart your browser after importing the CA.
+- If <https://local.test> still shows a warning, restart your browser after importing the CA.
 - Portainer is automatically proxied via NPM at `portainer.local.test`.
 - Watchtower runs in polling mode (every 3 hours) and can be configured via environment variables (see `docker-compose.yml`).
 
