@@ -72,11 +72,11 @@ Append extra SANs via env var when recreating `npm-ssl` (comma-separated). Accep
 
 ```bash
 # Add DNS and IP SANs for this run
-SERVER_SAN_EXTRA="DNS:dev.local,IP:127.0.0.1" \
+SERVER_SAN_EXTRA="DNS:local.dev,IP:127.0.0.1" \
   docker compose up -d --no-deps --force-recreate npm-ssl
 
 # Or via .env file
-echo 'SERVER_SAN_EXTRA=DNS:dev.local,IP:127.0.0.1' >> .env
+echo 'SERVER_SAN_EXTRA=DNS:local.dev,IP:127.0.0.1' >> .env
 docker compose up -d --no-deps --force-recreate npm-ssl
 ```
 
