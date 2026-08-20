@@ -9,7 +9,7 @@ Run a local Nginx Proxy Manager with a self-signed CA and server certificates fo
 docker compose up -d
 ```
 
-DNS: ensure `local.test` and `*.local.test` resolve to `127.0.0.1` (out of scope here).
+DNS: ensure `local.test` and `*.local.test` resolve to `127.0.0.1` ([Linux](linux.md)).
 
 Download and install the CA certificate: http://local.test/ca.pem
 Note: your browser may warn about an untrusted connection when downloading the CA. This is expected for the initial bootstrap with a self-signed CA.
