@@ -1,3 +1,5 @@
+## [1.3.2](https://github.com/disafronov/local-test/compare/v1.3.1...v1.3.2) (2026-10-25)
+
 ## [1.3.1](https://github.com/disafronov/local-test/compare/v1.3.0...v1.3.1) (2026-10-23)
 
 ## [1.3.0](https://github.com/disafronov/local-test/compare/v1.2.0...v1.3.0) (2026-08-20)
